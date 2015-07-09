@@ -155,7 +155,7 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     public PhotoViewAttacher(ImageView imageView, boolean zoomable) {
         mImageView = new WeakReference<>(imageView);
 
-        imageView.setDrawingCacheEnabled(true);
+//        imageView.setDrawingCacheEnabled(true);
         imageView.setOnTouchListener(this);
 
         ViewTreeObserver observer = imageView.getViewTreeObserver();
@@ -835,8 +835,13 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     }
 
     public Bitmap getVisibleRectangleBitmap() {
+        // TODO: 9/7/15 I've just disabled drawing cache, to see if that solves my problems
         ImageView imageView = getImageView();
-        return imageView == null ? null : imageView.getDrawingCache();
+        if (null == imageView) {
+            return null;
+        }
+
+        return !imageView.isDrawingCacheEnabled() ? null : imageView.getDrawingCache();
     }
 
     @Override
