@@ -89,6 +89,11 @@ public class PhotoView extends ImageView implements IPhotoView {
     }
 
     @Override
+    public void setNormalizedDisplayRect(RectF area) {
+        mAttacher.setNormalizedDisplayRect(area);
+    }
+
+    @Override
     public Matrix getDisplayMatrix() {
         return mAttacher.getDisplayMatrix();
     }

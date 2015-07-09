@@ -257,6 +257,37 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     }
 
     @Override
+    public void setNormalizedDisplayRect(RectF area) {
+        ImageView iv = getImageView();
+        if (null == iv) {
+            return;
+        }
+
+        Drawable d = iv.getDrawable();
+        if (null == d) {
+            return;
+        }
+
+        int imWidth = d.getIntrinsicWidth();
+        int imHeight = d.getIntrinsicHeight();
+
+        RectF src = new RectF(area.left * imWidth, area.top * imHeight, area.right * imWidth, area.bottom * imHeight);
+        RectF target = new RectF(0, 0, getImageViewWidth(iv), getImageViewHeight(iv));
+        Matrix m = new Matrix();
+        m.setRectToRect(src, target, ScaleToFit.FILL);
+
+        Matrix baseInvert = new Matrix();
+        if (!mBaseMatrix.invert(baseInvert)) {
+            return;
+        }
+
+        baseInvert.postConcat(m);
+        mSuppMatrix.set(baseInvert);
+        setImageViewMatrix(getDrawMatrix());
+        checkMatrixBounds();
+    }
+
+    @Override
     public boolean setDisplayMatrix(Matrix finalMatrix) {
         if (finalMatrix == null)
             throw new IllegalArgumentException("Matrix cannot be null");

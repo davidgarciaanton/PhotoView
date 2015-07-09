@@ -46,6 +46,12 @@ public interface IPhotoView {
     RectF getDisplayRect();
 
     /**
+     * Set the display rect normalized with image dimensions, values are in range [0, 1]
+     * @param area
+     */
+    void setNormalizedDisplayRect(RectF area);
+
+    /**
      * Sets the Display Matrix of the currently displayed Drawable. The Rectangle is considered
      * relative to this View and includes all scaling and translations.
      *
