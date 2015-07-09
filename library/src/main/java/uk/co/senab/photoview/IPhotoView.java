@@ -51,6 +51,8 @@ public interface IPhotoView {
      */
     void setNormalizedDisplayRect(RectF area);
 
+    RectF getNormalizedDisplayRect();
+
     /**
      * Sets the Display Matrix of the currently displayed Drawable. The Rectangle is considered
      * relative to this View and includes all scaling and translations.
