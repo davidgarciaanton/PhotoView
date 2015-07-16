@@ -24,6 +24,7 @@ import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.util.Log;
 import android.view.GestureDetector;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnLongClickListener;
@@ -39,6 +40,7 @@ import java.lang.ref.WeakReference;
 import uk.co.senab.photoview.gestures.OnGestureListener;
 import uk.co.senab.photoview.gestures.VersionedGestureDetector;
 import uk.co.senab.photoview.log.LogManager;
+import uk.co.senab.photoview.log.Logger;
 import uk.co.senab.photoview.scrollerproxy.ScrollerProxy;
 
 import static android.view.MotionEvent.ACTION_CANCEL;
@@ -58,20 +60,28 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     static final Interpolator sInterpolator = new AccelerateDecelerateInterpolator();
     int ZOOM_DURATION = DEFAULT_ZOOM_DURATION;
 
-    static final int EDGE_NONE = -1;
-    static final int EDGE_LEFT = 0;
+    static final int EDGE_NONE  = -1;
+    static final int EDGE_LEFT  = 0;
     static final int EDGE_RIGHT = 1;
-    static final int EDGE_BOTH = 2;
+    static final int EDGE_BOTH  = 2;
 
     private float mMinScale = DEFAULT_MIN_SCALE;
     private float mMidScale = DEFAULT_MID_SCALE;
     private float mMaxScale = DEFAULT_MAX_SCALE;
 
     private boolean mAllowParentInterceptOnEdge = true;
-    private boolean mBlockParentIntercept = false;
+    private boolean mBlockParentIntercept       = false;
 
-    private static void checkZoomLevels(float minZoom, float midZoom,
-                                        float maxZoom) {
+    private boolean mOverlaping;
+    private int     overlapSize;
+    private boolean shouldComputeMatrix;
+
+    @OverlapPosition
+    private int overlapPos;
+
+    private static void checkZoomLevels(
+            float minZoom, float midZoom,
+            float maxZoom) {
         if (minZoom >= midZoom) {
             throw new IllegalArgumentException(
                     "MinZoom has to be less than MidZoom");
@@ -98,8 +108,9 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
 
         switch (scaleType) {
             case MATRIX:
-                throw new IllegalArgumentException(scaleType.name()
-                        + " is not supported in PhotoView");
+                throw new IllegalArgumentException(
+                        scaleType.name()
+                                + " is not supported in PhotoView");
 
             default:
                 return true;
@@ -124,7 +135,7 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     private WeakReference<ImageView> mImageView;
 
     // Gesture Detectors
-    private GestureDetector mGestureDetector;
+    private GestureDetector                                mGestureDetector;
     private uk.co.senab.photoview.gestures.GestureDetector mScaleDragDetector;
 
     // These are set so we don't keep allocating them on the heap
@@ -202,6 +213,48 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     @Override
     public void setOnScaleChangeListener(OnScaleChangeListener onScaleChangeListener) {
         this.mScaleChangeListener = onScaleChangeListener;
+    }
+
+    @Override
+    public void setOverlap(int overlapPix, @OverlapPosition int pos) {
+        boolean changed = false;
+        if (overlapPix <= 0) {
+            changed = mOverlaping == true;
+            mOverlaping = false;
+        } else {
+            if (!mOverlaping) {
+                changed = true;
+            }
+            mOverlaping = true;
+            changed |= this.overlapSize != overlapPix;
+            changed |= this.overlapPos != pos;
+            this.overlapSize = overlapPix;
+            this.overlapPos = pos;
+        }
+
+        if (changed) {
+            update();
+        }
+    }
+
+    @Override
+    public boolean hasOverlap() {
+        return mOverlaping;
+    }
+
+    @Override
+    public int getOverlapPixelSize() {
+        return mOverlaping ? overlapSize : 0;
+    }
+
+    @Override
+    public int getOverlapPosition() {
+        return overlapPos;
+    }
+
+    @Override
+    public void setOverlapPosition(@OverlapPosition int pos) {
+        overlapPos = pos;
     }
 
     @Override
@@ -309,8 +362,8 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
 
         baseInvert.postConcat(m);
         mSuppMatrix.set(baseInvert);
-        setImageViewMatrix(getDrawMatrix());
-        checkMatrixBounds();
+        shouldComputeMatrix = true;
+        checkAndDisplayMatrix();
     }
 
 
@@ -362,8 +415,8 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
             return false;
 
         mSuppMatrix.set(finalMatrix);
-        setImageViewMatrix(getDrawMatrix());
-        checkMatrixBounds();
+        shouldComputeMatrix = true;
+        checkAndDisplayMatrix();
 
         return true;
     }
@@ -374,18 +427,21 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     @Override
     public void setPhotoViewRotation(float degrees) {
         mSuppMatrix.setRotate(degrees % 360);
+        shouldComputeMatrix = true;
         checkAndDisplayMatrix();
     }
 
     @Override
     public void setRotationTo(float degrees) {
         mSuppMatrix.setRotate(degrees % 360);
+        shouldComputeMatrix = true;
         checkAndDisplayMatrix();
     }
 
     @Override
     public void setRotationBy(float degrees) {
         mSuppMatrix.postRotate(degrees % 360);
+        shouldComputeMatrix = true;
         checkAndDisplayMatrix();
     }
 
@@ -442,8 +498,12 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
 
     @Override
     public float getScale() {
+        return getMatrixScale(mSuppMatrix);
+    }
+
+    private float getMatrixScale(Matrix matrix) {
         return (float) Math.sqrt(
-                (float) Math.pow(getValue(mSuppMatrix, Matrix.MSCALE_X), 2) + (float) Math.pow(getValue(mSuppMatrix, Matrix.MSKEW_Y), 2));
+                (float) Math.pow(getValue(matrix, Matrix.MSCALE_X), 2) + (float) Math.pow(getValue(matrix, Matrix.MSKEW_Y), 2));
     }
 
     @Override
@@ -465,6 +525,7 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
 
         ImageView imageView = getImageView();
         mSuppMatrix.postTranslate(dx, dy);
+        shouldComputeMatrix = true;
         checkAndDisplayMatrix();
 
         /**
@@ -560,6 +621,7 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
                 mScaleChangeListener.onScaleChange(scaleFactor, focusX, focusY);
             }
             mSuppMatrix.postScale(scaleFactor, scaleFactor, focusX, focusY);
+            shouldComputeMatrix = true;
             checkAndDisplayMatrix();
         }
     }
@@ -740,6 +802,7 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
                         focalX, focalY));
             } else {
                 mSuppMatrix.setScale(scale, scale, focalX, focalY);
+                shouldComputeMatrix = true;
                 checkAndDisplayMatrix();
             }
         }
@@ -788,8 +851,10 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     }
 
     public Matrix getDrawMatrix() {
-        mDrawMatrix.set(mBaseMatrix);
-        mDrawMatrix.postConcat(mSuppMatrix);
+        if (shouldComputeMatrix) {
+            mDrawMatrix.set(mBaseMatrix);
+            mDrawMatrix.postConcat(mSuppMatrix);
+        }
         return mDrawMatrix;
     }
 
@@ -830,7 +895,8 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
             return false;
         }
 
-        final RectF rect = getDisplayRect(getDrawMatrix());
+        final Matrix drawMatrix = getDrawMatrix();
+        final RectF rect = getDisplayRect(drawMatrix);
         if (null == rect) {
             return false;
         }
@@ -840,6 +906,7 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
 
         final int viewHeight = getImageViewHeight(imageView);
         if (height <= viewHeight) {
+            // this only happens while zooming out and still holding fingers down
             switch (mScaleType) {
                 case FIT_START:
                     deltaY = -rect.top;
@@ -858,7 +925,25 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
         }
 
         final int viewWidth = getImageViewWidth(imageView);
+        final int scaledOverlapDim = (int) (getMatrixScale(mBaseMatrix) * overlapSize);
+
+
+        Logger logger = null;
+        if (DEBUG) {
+            logger = LogManager.getLogger();
+            final Drawable drawable = imageView.getDrawable();
+            logger.d(LOG_TAG, "Original rect: 0,0," + drawable.getIntrinsicWidth() + "," + drawable.getIntrinsicHeight());
+            logger.d(LOG_TAG, "transformed rect: " + rect);
+            logger.d(LOG_TAG, "Transformation matrix: " + drawMatrix);
+            logger.d(LOG_TAG, "Transformed DIM with scale " + getMatrixScale(mBaseMatrix) + ": " + scaledOverlapDim);
+        }
+
+
+        final int rightOverlapDim = mOverlaping && overlapPos == Gravity.END ? scaledOverlapDim : 0;
+        final int leftOverlapDim = mOverlaping && overlapPos == Gravity.START ? scaledOverlapDim : 0;
+
         if (width <= viewWidth) {
+            // this only happens while zooming out and still holding fingers down
             switch (mScaleType) {
                 case FIT_START:
                     deltaX = -rect.left;
@@ -871,18 +956,28 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
                     break;
             }
             mScrollEdge = EDGE_BOTH;
-        } else if (rect.left > 0) {
-            mScrollEdge = EDGE_LEFT;
-            deltaX = -rect.left;
-        } else if (rect.right < viewWidth) {
-            deltaX = viewWidth - rect.right;
-            mScrollEdge = EDGE_RIGHT;
+        } else if (rect.left + leftOverlapDim > 0) {
+            deltaX = -leftOverlapDim - rect.left;
+            if (rect.left > 0) {
+                mScrollEdge = EDGE_LEFT;
+            }
+        } else if (rect.right - rightOverlapDim < viewWidth) {
+            deltaX = viewWidth + rightOverlapDim - rect.right;
+            if (null != logger) {
+                logger.d(LOG_TAG, String.format("Hitting right side: %f - %d < %d", rect.right, rightOverlapDim, viewHeight));
+                logger.d(LOG_TAG, "Displacement = " + deltaX);
+            }
+
+            if (rect.right < viewWidth) {
+                mScrollEdge = EDGE_RIGHT;
+            }
         } else {
             mScrollEdge = EDGE_NONE;
         }
 
         // Finally actually translate the matrix
         mSuppMatrix.postTranslate(deltaX, deltaY);
+        shouldComputeMatrix = true;
         return true;
     }
 
@@ -963,9 +1058,8 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
             }
             mSuppMatrix.postTranslate(dx * scale, dy * scale);
         }
+        shouldComputeMatrix = true;
         checkAndDisplayMatrix();
-//        setImageViewMatrix(getDrawMatrix());
-//        checkMatrixBounds();
     }
 
     private void setImageViewMatrix(Matrix matrix) {
@@ -1219,12 +1313,18 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
                 return;
             }
 
+            int scaledOverlapDim = (int)(getMatrixScale(mBaseMatrix) * overlapSize);
+
+            final int leftOverlapDim = mOverlaping && overlapPos == Gravity.START ? scaledOverlapDim : 0;
+            final int rightOverlapDim = mOverlaping && overlapPos == Gravity.END ? scaledOverlapDim : 0;
+
             final int startX = Math.round(-rect.left);
             final int minX, maxX, minY, maxY;
 
-            if (viewWidth < rect.width()) {
-                minX = 0;
-                maxX = Math.round(rect.width() - viewWidth);
+
+            if (viewWidth + scaledOverlapDim < rect.width()) {
+                minX = leftOverlapDim;
+                maxX = Math.round(rect.width() - viewWidth - rightOverlapDim);
             } else {
                 minX = maxX = startX;
             }
@@ -1275,6 +1375,7 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
                 }
 
                 mSuppMatrix.postTranslate(mCurrentX - newX, mCurrentY - newY);
+                shouldComputeMatrix = true;
                 setImageViewMatrix(getDrawMatrix());
 
                 mCurrentX = newX;

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="overlap_anchor_pos" format="enum">
+        <enum name="start" value="0"/>
+        <enum name="end" value="1"/>
+    </attr>
+    <attr name="overlap_size" format="integer"/>
+
+    <declare-styleable name="PhotoView">
+        <attr name="overlap_anchor_pos"/>
+        <attr name="overlap_size"/>
+    </declare-styleable>
+</resources>

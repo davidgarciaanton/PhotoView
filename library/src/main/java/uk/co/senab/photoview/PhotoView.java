@@ -16,6 +16,7 @@
 package uk.co.senab.photoview;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.graphics.RectF;
@@ -23,6 +24,7 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
+import android.view.Gravity;
 import android.widget.ImageView;
 
 import uk.co.senab.photoview.PhotoViewAttacher.OnMatrixChangedListener;
@@ -46,10 +48,10 @@ public class PhotoView extends ImageView implements IPhotoView {
     public PhotoView(Context context, AttributeSet attr, int defStyle) {
         super(context, attr, defStyle);
         super.setScaleType(ScaleType.MATRIX);
-        init();
+        init(context, attr, defStyle);
     }
 
-    protected void init() {
+    protected void init(Context context, AttributeSet attr, int defStyle) {
         if (null == mAttacher || null == mAttacher.getImageView()) {
             mAttacher = new PhotoViewAttacher(this);
         }
@@ -58,6 +60,20 @@ public class PhotoView extends ImageView implements IPhotoView {
             setScaleType(mPendingScaleType);
             mPendingScaleType = null;
         }
+
+        if (null != context) {
+            TypedArray ta = context.obtainStyledAttributes(attr, R.styleable.PhotoView, defStyle, 0);
+            if (ta.hasValue(R.styleable.PhotoView_overlap_size)) {
+                int overlapSize = ta.getInteger(R.styleable.PhotoView_overlap_size, 0);
+
+                int grav = ta.getInt(R.styleable.PhotoView_overlap_anchor_pos, 0);
+                if (overlapSize > 0) {
+                    setOverlap(overlapSize, grav == 0 ? Gravity.START : Gravity.END);
+                }
+            }
+            ta.recycle();
+        }
+
     }
 
     /**
@@ -76,6 +92,31 @@ public class PhotoView extends ImageView implements IPhotoView {
     @Override
     public void setRotationBy(float rotationDegree) {
         mAttacher.setRotationBy(rotationDegree);
+    }
+
+    @Override
+    public void setOverlap(int overlapPix, @OverlapPosition int pos) {
+        mAttacher.setOverlap(overlapPix, pos);
+    }
+
+    @Override
+    public boolean hasOverlap() {
+        return mAttacher.hasOverlap();
+    }
+
+    @Override
+    public int getOverlapPixelSize() {
+        return mAttacher.getOverlapPixelSize();
+    }
+
+    @Override
+    public int getOverlapPosition() {
+        return mAttacher.getOverlapPosition();
+    }
+
+    @Override
+    public void setOverlapPosition(@OverlapPosition int pos) {
+        mAttacher.setOverlapPosition(pos);
     }
 
     @Override
@@ -311,7 +352,7 @@ public class PhotoView extends ImageView implements IPhotoView {
 
     @Override
     protected void onAttachedToWindow() {
-        init();
+        init(null, null, 0);
         super.onAttachedToWindow();
     }
 }

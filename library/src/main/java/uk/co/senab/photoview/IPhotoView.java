@@ -18,17 +18,61 @@ package uk.co.senab.photoview;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.graphics.RectF;
+import android.support.annotation.IntDef;
 import android.view.GestureDetector;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.ImageView;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 
 public interface IPhotoView {
 
-    public static final float DEFAULT_MAX_SCALE = 3.0f;
-    public static final float DEFAULT_MID_SCALE = 1.75f;
-    public static final float DEFAULT_MIN_SCALE = 1.0f;
-    public static final int DEFAULT_ZOOM_DURATION = 200;
+    float DEFAULT_MAX_SCALE = 3.0f;
+    float DEFAULT_MID_SCALE = 1.75f;
+    float DEFAULT_MIN_SCALE = 1.0f;
+    int DEFAULT_ZOOM_DURATION = 200;
+
+    @IntDef(value = {
+            Gravity.START, Gravity.END
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    @interface OverlapPosition { }
+
+    /**
+     * Set overlap size and position. For now, just supported overlap in one side left (start) or right (end).
+     * actually there's no LTR support on the view or TOP BOTTOM offets...
+     *
+     * @param overlapPix raw pixel size to overlap image
+     * @param pos start or end, meaning actually left or right
+     */
+    void setOverlap(int overlapPix, @OverlapPosition int pos);
+
+    /**
+     *
+     * @return true if overlap is active
+     */
+    boolean hasOverlap();
+
+    /**
+     * Gets the raw pixel dimension of overlap
+     * @return
+     */
+    int getOverlapPixelSize();
+
+    /**
+     * Gets where overlap position will happen if active, undefined otherwise
+     * @return
+     */
+    @OverlapPosition int getOverlapPosition();
+
+    /**
+     * Just sets the Overlap Position START (LEFT) / END (RIGHT)
+     * @param pos
+     */
+    void setOverlapPosition(@OverlapPosition int pos);
 
     /**
      * Returns true if the PhotoView is set to allow zooming of Photos.
