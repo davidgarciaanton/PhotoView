@@ -18,11 +18,16 @@ package uk.co.senab.photoview;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Matrix.ScaleToFit;
+import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.Gravity;
@@ -402,6 +407,23 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
         if (null == d) {
             return null;
         }
+        final int dHeight = d.getIntrinsicHeight();
+        final int dWidth = d.getIntrinsicWidth();
+        RectF retVal = getUnormalizedRect(cached, iv, dWidth, dHeight);
+        if (retVal == null) {
+            return null;
+        }
+        retVal.set(
+                retVal.left / dWidth,
+                retVal.top / dHeight,
+                retVal.right / dWidth,
+                retVal.bottom / dHeight
+        );
+        return retVal;
+    }
+
+    @Nullable
+    private RectF getUnormalizedRect(boolean cached, @NonNull ImageView iv, int bmpWidth, int bmpHeight) {
         RectF retVal = new RectF();
 
         retVal.set(0, 0, getImageViewWidth(iv, cached), getImageViewHeight(iv, cached));
@@ -411,14 +433,10 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
             return null;
         }
         inverse.mapRect(retVal);
-        final int dHeight = d.getIntrinsicHeight();
-        final int dWidth = d.getIntrinsicWidth();
-        retVal.set(
-                retVal.left / dWidth,
-                retVal.top / dHeight,
-                retVal.right / dWidth,
-                retVal.bottom / dHeight
-        );
+        retVal.left = Math.max(0, retVal.left);
+        retVal.top = Math.max(0, retVal.top);
+        retVal.right = Math.min(bmpWidth, retVal.right);
+        retVal.bottom = Math.min(bmpHeight, retVal.bottom);
         return retVal;
     }
 
@@ -1023,13 +1041,54 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     }
 
     public Bitmap getVisibleRectangleBitmap() {
-        // TODO: 9/7/15 I've just disabled drawing cache, to see if that solves my problems
         ImageView imageView = getImageView();
         if (null == imageView) {
             return null;
         }
 
-        return !imageView.isDrawingCacheEnabled() ? null : imageView.getDrawingCache();
+        Drawable d = imageView.getDrawable();
+        if (null == d) {
+            return null;
+        }
+
+        if (d instanceof BitmapDrawable) {
+            return visibleBitmapFromBitmap(((BitmapDrawable) d).getBitmap(), imageView);
+        } else {
+            return createVisibibleBitmap(d, imageView);
+        }
+    }
+
+    private Bitmap createVisibibleBitmap(Drawable d, ImageView imageView) {
+        Rect bmpBox = getUnormalizedBoxWithOverlay(imageView, d.getIntrinsicWidth(), d.getIntrinsicHeight());
+        Bitmap out = Bitmap.createBitmap(bmpBox.width(), bmpBox.height(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(out);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        canvas.save();
+        canvas.translate(bmpBox.left, bmpBox.top);
+        d.draw(canvas);
+        canvas.restore();
+        return null;
+    }
+
+    private Bitmap visibleBitmapFromBitmap(Bitmap bitmap, ImageView imageView) {
+        Rect bmpBox = getUnormalizedBoxWithOverlay(imageView, bitmap.getWidth(), bitmap.getHeight());
+
+        return Bitmap.createBitmap(bitmap, bmpBox.left, bmpBox.top, bmpBox.width(), bmpBox.height());
+    }
+
+    @NonNull
+    private Rect getUnormalizedBoxWithOverlay(ImageView imageView, int availableWidth, int availableHeight) {
+        RectF visible = getUnormalizedRect(false, imageView, availableWidth, availableHeight);
+        if (mOverlaping) {
+            if (overlapPos == Gravity.START) {
+                visible.left = Math.max(0, visible.left - overlapSize);
+            } else {
+                visible.right = Math.min(availableWidth, visible.right + overlapSize);
+            }
+        }
+        Rect bmpBox = new Rect();
+        visible.round(bmpBox);
+        return bmpBox;
     }
 
     @Override
