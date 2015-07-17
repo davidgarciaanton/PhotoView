@@ -17,6 +17,7 @@ package uk.co.senab.photoview;
 
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.support.annotation.IntDef;
 import android.view.GestureDetector;
@@ -61,6 +62,8 @@ public interface IPhotoView {
      * @return
      */
     int getOverlapPixelSize();
+
+    float getRelativeOverlapSize();
 
     /**
      * Gets where overlap position will happen if active, undefined otherwise

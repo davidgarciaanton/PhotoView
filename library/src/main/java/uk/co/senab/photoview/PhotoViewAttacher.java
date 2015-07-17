@@ -20,6 +20,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.graphics.Matrix.ScaleToFit;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.util.Log;
@@ -245,6 +246,25 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     @Override
     public int getOverlapPixelSize() {
         return mOverlaping ? overlapSize : 0;
+    }
+
+    @Override
+    public float getRelativeOverlapSize() {
+        if (!mOverlaping) {
+            return 0.0f;
+        }
+
+        final ImageView imageView = getImageView();
+        if (null == imageView) {
+            return 0.0f;
+        }
+
+        final Drawable drawable = imageView.getDrawable();
+        if (null == drawable) {
+            return 0.0f;
+        }
+
+        return (float)overlapSize / drawable.getIntrinsicWidth();
     }
 
     @Override
