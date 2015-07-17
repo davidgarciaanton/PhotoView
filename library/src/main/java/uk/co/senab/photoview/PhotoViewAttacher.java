@@ -1062,12 +1062,11 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
         Rect bmpBox = getUnormalizedBoxWithOverlay(imageView, d.getIntrinsicWidth(), d.getIntrinsicHeight());
         Bitmap out = Bitmap.createBitmap(bmpBox.width(), bmpBox.height(), Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(out);
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         canvas.save();
-        canvas.translate(bmpBox.left, bmpBox.top);
+        canvas.translate(-bmpBox.left, -bmpBox.top);
         d.draw(canvas);
         canvas.restore();
-        return null;
+        return out;
     }
 
     private Bitmap visibleBitmapFromBitmap(Bitmap bitmap, ImageView imageView) {
