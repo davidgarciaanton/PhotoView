@@ -17,6 +17,7 @@ package uk.co.senab.photoview;
 
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.support.annotation.IntDef;
@@ -41,6 +42,8 @@ public interface IPhotoView {
     })
     @Retention(RetentionPolicy.SOURCE)
     @interface OverlapPosition { }
+
+    void getImageNaturalSize(Point size);
 
     /**
      * Set overlap size and position. For now, just supported overlap in one side left (start) or right (end).
@@ -99,6 +102,8 @@ public interface IPhotoView {
     void setNormalizedDisplayRect(RectF area);
 
     RectF getNormalizedDisplayRect();
+
+    RectF getVisibleBox();
 
     /**
      * Sets the Display Matrix of the currently displayed Drawable. The Rectangle is considered

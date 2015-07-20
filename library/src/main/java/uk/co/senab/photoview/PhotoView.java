@@ -19,6 +19,7 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
@@ -96,6 +97,11 @@ public class PhotoView extends ImageView implements IPhotoView {
     }
 
     @Override
+    public void getImageNaturalSize(Point size) {
+        mAttacher.getImageNaturalSize(size);
+    }
+
+    @Override
     public void setOverlap(int overlapPix, @OverlapPosition int pos) {
         mAttacher.setOverlap(overlapPix, pos);
     }
@@ -143,6 +149,11 @@ public class PhotoView extends ImageView implements IPhotoView {
     @Override
     public RectF getNormalizedDisplayRect() {
         return mAttacher.getNormalizedDisplayRect();
+    }
+
+    @Override
+    public RectF getVisibleBox() {
+        return mAttacher.getVisibleBox();
     }
 
     @Override

@@ -22,6 +22,7 @@ import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Matrix.ScaleToFit;
 import android.graphics.Paint;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
@@ -219,6 +220,20 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     @Override
     public void setOnScaleChangeListener(OnScaleChangeListener onScaleChangeListener) {
         this.mScaleChangeListener = onScaleChangeListener;
+    }
+
+    @Override
+    public void getImageNaturalSize(Point size) {
+        ImageView iv = getImageView();
+        if (null == iv) {
+            return;
+        }
+
+        Drawable d = iv.getDrawable();
+        if (null == d) {
+            return;
+        }
+        size.set(d.getIntrinsicWidth(), d.getIntrinsicHeight());
     }
 
     @Override
@@ -420,6 +435,20 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
                 retVal.bottom / dHeight
         );
         return retVal;
+    }
+
+    @Override
+    public RectF getVisibleBox() {
+        ImageView iv = getImageView();
+        if (null == iv) {
+            return null;
+        }
+
+        Drawable d = iv.getDrawable();
+        if (null == d) {
+            return null;
+        }
+        return getUnormalizedRect(false, iv, d.getIntrinsicWidth(), d.getIntrinsicHeight());
     }
 
     @Nullable
