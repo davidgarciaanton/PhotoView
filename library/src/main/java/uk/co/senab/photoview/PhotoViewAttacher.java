@@ -387,7 +387,7 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
         final float inAr = src.width() / src.height();
 
         // for now ignore regions not matching aspect ratio...
-        if ((int)(viewAr * 1000.0f) != (int)(inAr * 1000.0f)) {
+        if ((int)(viewAr * 1000.0f + 0.5f) != (int)(inAr * 1000.0f + 0.5f)) {
             return;
         }
 
