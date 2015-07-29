@@ -181,11 +181,18 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
             observer.addOnGlobalLayoutListener(this);
 
         // Make sure we using MATRIX Scale Type
+
+        if (!(imageView instanceof PhotoView)) {
+            setScaleType(imageView.getScaleType());
+        }
         setImageViewScaleTypeMatrix(imageView);
 
         if (imageView.isInEditMode()) {
             return;
         }
+
+        attachToView(this, imageView);
+
         // Create Gesture Detectors...
         mScaleDragDetector = VersionedGestureDetector.newInstance(
                 imageView.getContext(), this);
@@ -206,6 +213,36 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
 
         // Finally, update the UI so that we're zoomable
         setZoomable(zoomable);
+    }
+
+    public static IPhotoView photoViewFromView(View v) {
+        if (v instanceof IPhotoView) {
+            return (IPhotoView) v;
+        } else {
+            Object tag = v.getTag(R.id.attacher_tag);
+            if (tag instanceof IPhotoView) {
+                return (IPhotoView)tag;
+            } else {
+                return null;
+            }
+        }
+    }
+
+    private static void attachToView(PhotoViewAttacher attacher, ImageView v) {
+        if (!(v instanceof IPhotoView)) {
+            v.setTag(R.id.attacher_tag, attacher);
+        }
+    }
+
+    private static void resetAttachement(View v) {
+        if (v instanceof PhotoView) {
+            return;
+        }
+
+        Object tag = v.getTag(R.id.attacher_tag);
+        if (null != tag) {
+            v.setTag(R.id.attacher_tag, null);
+        }
     }
 
     @Override
@@ -317,6 +354,7 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
         final ImageView imageView = mImageView.get();
 
         if (null != imageView) {
+            resetAttachement(imageView);
             // Remove this as a global layout listener
             ViewTreeObserver observer = imageView.getViewTreeObserver();
             if (null != observer && observer.isAlive()) {
