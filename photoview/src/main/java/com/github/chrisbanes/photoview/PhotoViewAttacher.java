@@ -148,6 +148,7 @@ public class PhotoViewAttacher implements View.OnTouchListener,
             }
         }
     };
+    private GestureDetector.OnDoubleTapListener mDoubleTapListener;
 
     public PhotoViewAttacher(ImageView imageView) {
         mImageView = imageView;
@@ -195,6 +196,11 @@ public class PhotoViewAttacher implements View.OnTouchListener,
         mGestureDetector.setOnDoubleTapListener(new GestureDetector.OnDoubleTapListener() {
             @Override
             public boolean onSingleTapConfirmed(MotionEvent e) {
+
+                if (null != mDoubleTapListener && mDoubleTapListener.onSingleTapConfirmed(e)) {
+                    return true;
+                }
+
                 if (mOnClickListener != null) {
                     mOnClickListener.onClick(mImageView);
                 }
@@ -231,6 +237,11 @@ public class PhotoViewAttacher implements View.OnTouchListener,
 
             @Override
             public boolean onDoubleTap(MotionEvent ev) {
+
+                if (null != mDoubleTapListener && mDoubleTapListener.onDoubleTap(ev)) {
+                    return true;
+                }
+
                 try {
                     float scale = getScale();
                     float x = ev.getX();
@@ -252,6 +263,11 @@ public class PhotoViewAttacher implements View.OnTouchListener,
 
             @Override
             public boolean onDoubleTapEvent(MotionEvent e) {
+
+                if (null != mDoubleTapListener && mDoubleTapListener.onDoubleTapEvent(e)) {
+                    return true;
+                }
+
                 // Wait for the confirmed onDoubleTap() instead
                 return false;
             }
@@ -259,7 +275,7 @@ public class PhotoViewAttacher implements View.OnTouchListener,
     }
 
     public void setOnDoubleTapListener(GestureDetector.OnDoubleTapListener newOnDoubleTapListener) {
-        this.mGestureDetector.setOnDoubleTapListener(newOnDoubleTapListener);
+        this.mDoubleTapListener = newOnDoubleTapListener;
     }
 
     public void setOnScaleChangeListener(OnScaleChangedListener onScaleChangeListener) {
